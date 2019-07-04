@@ -24,14 +24,22 @@ class Virus:
             self.virulence += block.virulence
             self.detectability += block.detectability
 
-        self.graphic.update_stats(self.name, self.impact, self.virulence, self.detectability)
+        self.graphic.update_stats(
+            self.name,
+            self.impact,
+            self.virulence,
+            self.detectability,
+            self.industry,
+            len(self.blocks)
+        )
 
-    def valid(self):
+    def valid(self, reason=False):
         """ checks whether the virus is valid or not """
         if len(self.blocks) > 0 and 0 <= self.industry <= 2:
             return True
         else:
             return False
+
 
     def add_block(self, block):
         """ adds a block to the virus"""
@@ -60,19 +68,24 @@ class VirusGraphic:
         self.resolution = pygame.display.Info()
         self.resolution = (self.resolution.current_w, self.resolution.current_h)
         self.impact, self.virulence, self.detectability = 0, 0, 0
+        self.industry = -1
+        self.num_blocks = 0
 
         self.card = pygame.Surface((900, 300))
         self.impact_bar = pygame.Surface((345, 80))
         self.virulence_bar = pygame.Surface((345, 80))
         self.detectability_bar = pygame.Surface((345, 80))
+        self.invalid_reason_popup = pygame.Surface((0, 0))
 
         self.update(self.resolution)
 
-    def update_stats(self, name, impact, virulence, detectability):
+    def update_stats(self, name, impact, virulence, detectability, industry, num_blocks):
         self.name = name
         self.impact = impact
         self.virulence = virulence
         self.detectability = detectability
+        self.industry = industry
+        self.num_blocks = num_blocks
         self.update(self.resolution)
 
     @staticmethod
@@ -81,6 +94,14 @@ class VirusGraphic:
             return math.log(x, 2)/10
         except ValueError:
             return 0
+
+    def invalid_reason(self):
+        if self.num_blocks == 0 or self.num_blocks >= 15:
+            return "You haven't added any blocks to your virus!"
+        elif self.industry == -1:
+            return "You haven't selected an industry for your virus"
+        else:
+            return "[._.]"
 
     def update(self, resolution):
         """ updates graphical elements when resolution or virus stats change """
@@ -166,4 +187,30 @@ class VirusGraphic:
         self.virulence_bar.blit(virulence_text[0], virulence_text[0].get_rect(center=(40, 40)))
         self.detectability_bar.blit(
             detectability_text[0], detectability_text[0].get_rect(center=(40, 40))
+        )
+
+        invalid_reason_text = self.renderer.fonts["main"].render(
+            self.invalid_reason(),
+            size=100
+        )
+
+        self.invalid_reason_popup = pygame.Surface((
+            invalid_reason_text[1][2] + 100,
+            invalid_reason_text[1][3] + 50
+        ))
+
+        self.invalid_reason_popup.fill((75, 75, 75))
+        self.invalid_reason_popup.set_alpha(220)
+
+        self.invalid_reason_popup.blit(
+            invalid_reason_text[0],
+            (100, 50)
+        )
+
+        ratio = invalid_reason_text[1][2] + 100 / invalid_reason_text[1][3] + 50
+
+        self.invalid_reason_popup = pygame.transform.scale(
+            self.invalid_reason_popup,
+            (int((resolution[1]//30)/(invalid_reason_text[1][3] + 50)
+             * invalid_reason_text[1][2]), resolution[1]//30)
         )

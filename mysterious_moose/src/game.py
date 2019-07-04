@@ -249,7 +249,7 @@ class Game:
                 {
                     "type": "surface",
                     "surface": mv_button,
-                    "dest": self.elements["wm.v.loc"]
+                    "dest": self.elements["v.mv.loc"]
                 }
             ])
         elif self.view == 4:
@@ -303,9 +303,18 @@ class Game:
 
             buttons = [
                 self.elements["v.buttons.mv"],
+                self.elements["vc.buttons.release"],
+                self.elements["vc.buttons.powerplant"],
+                self.elements["vc.buttons.chemical"],
+                self.elements["vc.buttons.manufactory"]
             ]
 
             mv_button = self.elements["v.mv"]
+            release_button = self.elements["vc.release"]
+            powerplant_button = self.elements["vc.powerplant"]
+            chemical_button = self.elements["vc.chemical"]
+            manufactory_button = self.elements["vc.manufactory"]
+            text = pygame.Surface((0, 0))
 
             mouse_collision = mouse_pos.collidelist(buttons + pb_buttons + vb_buttons)
 
@@ -315,30 +324,73 @@ class Game:
                     self.pressed = True
                     if mouse_collision == 0:
                         mv_button = self.elements["v.mv.pressed"]
+                    elif mouse_collision == 1:
+                        release_button = self.elements["vc.release.pressed"]
+                    elif mouse_collision == 2:
+                        powerplant_button = self.elements["vc.powerplant.pressed"]
+                    elif mouse_collision == 3:
+                        chemical_button = self.elements["vc.chemical.pressed"]
+                    elif mouse_collision == 4:
+                        manufactory_button = self.elements["vc.manufactory.pressed"]
 
                 elif mouse_state[0] == 0 and self.pressed is True:
                     self.pressed = False
                     if mouse_collision == 0:
                         self.view = 0
-                        self.viruses[self.selected].update_stats()
+                    elif mouse_collision == 1:
+                        if self.viruses[self.selected].valid() is True:
+                            self.viruses[self.selected].released = True
+                            self.view = 3
+                    elif mouse_collision == 2:
+                        self.viruses[self.selected].industry = 0
+                    elif mouse_collision == 3:
+                        self.viruses[self.selected].industry = 1
+                    elif mouse_collision == 4:
+                        self.viruses[self.selected].industry = 2
 
                     elif mouse_collision > len(buttons + pb_buttons) - 1:
                         block_collision = mouse_collision - len(buttons + pb_buttons)
                         self.player_blocks.append(
                             self.viruses[self.selected].blocks.pop(block_collision)
                         )
+                        self.viruses[self.selected].update_stats()
+
                     elif mouse_collision > len(buttons) - 1:
                         block_collision = mouse_collision - len(buttons)
                         self.viruses[self.selected].blocks.append(
                             self.player_blocks.pop(block_collision)
                         )
+                        self.viruses[self.selected].update_stats()
 
                 else:
                     if mouse_collision == 0:
                         mv_button = self.elements["v.mv.hover"]
+                    elif mouse_collision == 1:
+                        if self.viruses[self.selected].valid() is True:
+                            release_button = self.elements["vc.release.hover"]
+                        else:
+                            text = self.viruses[self.selected].graphic.invalid_reason_popup
+                            log.info(str(text))
+                            log.info(str(mouse_pos))
+                    elif mouse_collision == 2:
+                        powerplant_button = self.elements["vc.powerplant.hover"]
+                    elif mouse_collision == 3:
+                        chemical_button = self.elements["vc.chemical.hover"]
+                    elif mouse_collision == 4:
+                        manufactory_button = self.elements["vc.manufactory.hover"]
 
             else:
                 self.pressed = False
+
+            if self.viruses[self.selected].industry == 0:
+                powerplant_button = self.elements["vc.powerplant.selected"]
+            elif self.viruses[self.selected].industry == 1:
+                chemical_button = self.elements["vc.chemical.selected"]
+            elif self.viruses[self.selected].industry == 2:
+                manufactory_button = self.elements["vc.manufactory.selected"]
+
+            if self.viruses[self.selected].valid() is False:
+                release_button = self.elements["vc.release.invalid"]
 
             self.to_render.append([
                 {
@@ -349,7 +401,27 @@ class Game:
                     "type": "surface",
                     "surface": self.elements["vc.infobar"],
                     "dest": self.elements["vc.infobar.loc"]
-                }
+                }, {
+                    "type": "surface",
+                    "surface": release_button,
+                    "dest": self.elements["vc.release.loc"]
+                }, {
+                    "type": "surface",
+                    "surface": powerplant_button,
+                    "dest": self.elements["vc.powerplant.loc"]
+                }, {
+                    "type": "surface",
+                    "surface": chemical_button,
+                    "dest": self.elements["vc.chemical.loc"]
+                }, {
+                    "type": "surface",
+                    "surface": manufactory_button,
+                    "dest": self.elements["vc.manufactory.loc"]
+                }, {
+                                    "type": "surface",
+                                    "surface": text,
+                                    "dest": text.get_rect(bottomright=(mouse_pos[0], mouse_pos[1]))
+                                }
             ])
         else:
             log.error("view was set to an invalid value resetting")
@@ -373,6 +445,8 @@ class Game:
             "button": (150, 150, 150),
             "button_hover": (125, 125, 125),
             "button_pressed": (100, 100, 100),
+            "button_selected": (75, 150, 75),
+            "button_invalid": (150, 75, 75),
             "tray": (50, 50, 50),
             "scroll": (75, 75, 75),
 
@@ -567,7 +641,197 @@ class Game:
         self.elements["vc.infobar"].fill(colours["outline"])
         self.elements["vc.infobar.loc"] = (sidebar_x, int(resolution[1]*0.9))
 
+        release_text = self.graphics.fonts["main"].render("Release!", size=100)
 
-        release_text = self.graphics.fonts["main"].render("Release!")
+        self.elements["vc.release"] = pygame.Surface((580, 120))
+        self.elements["vc.release"].fill(colours["button"])
+        self.elements["vc.release"].blit(release_text[0], release_text[0].get_rect(
+            center=(290, 60)
+        ))
+        self.elements["vc.release.hover"] = pygame.Surface((580, 120))
+        self.elements["vc.release.hover"].fill(colours["button_hover"])
+        self.elements["vc.release.hover"].blit(release_text[0], release_text[0].get_rect(
+            center=(290, 60)
+        ))
+        self.elements["vc.release.pressed"] = pygame.Surface((580, 120))
+        self.elements["vc.release.pressed"].fill(colours["button_pressed"])
+        self.elements["vc.release.pressed"].blit(release_text[0], release_text[0].get_rect(
+            center=(290, 60)
+        ))
 
-        self.elements["vc.release"] = pygame.Surface((resolution[0]//20, resolution[1]//20))
+        self.elements["vc.release.invalid"] = pygame.Surface((580, 120))
+        self.elements["vc.release.invalid"].fill(colours["button_invalid"])
+        self.elements["vc.release.invalid"].blit(release_text[0], release_text[0].get_rect(
+            center=(290, 60)
+        ))
+
+        powerplant = self.graphics.fonts["main"].render("Power Plant", size=100)
+
+        self.elements["vc.powerplant"] = pygame.Surface((754, 120))
+        self.elements["vc.powerplant"].fill(colours["button"])
+        self.elements["vc.powerplant"].blit(powerplant[0], powerplant[0].get_rect(
+            center=(372, 60)
+        ))
+        self.elements["vc.powerplant.hover"] = pygame.Surface((754, 120))
+        self.elements["vc.powerplant.hover"].fill(colours["button_hover"])
+        self.elements["vc.powerplant.hover"].blit(powerplant[0], powerplant[0].get_rect(
+            center=(372, 60)
+        ))
+        self.elements["vc.powerplant.pressed"] = pygame.Surface((754, 120))
+        self.elements["vc.powerplant.pressed"].fill(colours["button_pressed"])
+        self.elements["vc.powerplant.pressed"].blit(powerplant[0], powerplant[0].get_rect(
+            center=(372, 60)
+        ))
+
+        self.elements["vc.powerplant.selected"] = pygame.Surface((754, 120))
+        self.elements["vc.powerplant.selected"].fill(colours["button_selected"])
+        self.elements["vc.powerplant.selected"].blit(powerplant[0], powerplant[0].get_rect(
+            center=(372, 60)
+        ))
+
+        chemical = self.graphics.fonts["main"].render("Chemical Plant", size=100)
+
+        self.elements["vc.chemical"] = pygame.Surface((928, 120))
+        self.elements["vc.chemical"].fill(colours["button"])
+        self.elements["vc.chemical"].blit(chemical[0], chemical[0].get_rect(
+            center=(464, 60)
+        ))
+        self.elements["vc.chemical.hover"] = pygame.Surface((928, 120))
+        self.elements["vc.chemical.hover"].fill(colours["button_hover"])
+        self.elements["vc.chemical.hover"].blit(chemical[0], chemical[0].get_rect(
+            center=(464, 60)
+        ))
+        self.elements["vc.chemical.pressed"] = pygame.Surface((928, 120))
+        self.elements["vc.chemical.pressed"].fill(colours["button_pressed"])
+        self.elements["vc.chemical.pressed"].blit(chemical[0], chemical[0].get_rect(
+            center=(464, 60)
+        ))
+        self.elements["vc.chemical.selected"] = pygame.Surface((928, 120))
+        self.elements["vc.chemical.selected"].fill(colours["button_selected"])
+        self.elements["vc.chemical.selected"].blit(chemical[0], chemical[0].get_rect(
+            center=(464, 60)
+        ))
+
+        manufactory = self.graphics.fonts["main"].render("Car Manufactory", size=100)
+
+        self.elements["vc.manufactory"] = pygame.Surface((986, 120))
+        self.elements["vc.manufactory"].fill(colours["button"])
+        self.elements["vc.manufactory"].blit(manufactory[0], manufactory[0].get_rect(
+            center=(493, 60)
+        ))
+        self.elements["vc.manufactory.hover"] = pygame.Surface((986, 120))
+        self.elements["vc.manufactory.hover"].fill(colours["button_hover"])
+        self.elements["vc.manufactory.hover"].blit(manufactory[0], manufactory[0].get_rect(
+            center=(493, 60)
+        ))
+        self.elements["vc.manufactory.pressed"] = pygame.Surface((986, 120))
+        self.elements["vc.manufactory.pressed"].fill(colours["button_pressed"])
+        self.elements["vc.manufactory.pressed"].blit(manufactory[0], manufactory[0].get_rect(
+            center=(493, 60)
+        ))
+        self.elements["vc.manufactory.selected"] = pygame.Surface((986, 120))
+        self.elements["vc.manufactory.selected"].fill(colours["button_selected"])
+        self.elements["vc.manufactory.selected"].blit(manufactory[0], manufactory[0].get_rect(
+            center=(493, 60)
+        ))
+
+        infobar_button_height = self.elements["vc.infobar"].get_height()//3
+
+        release_size = (int(infobar_button_height * 4.833), infobar_button_height)
+
+        self.elements["vc.release"] = pygame.transform.scale(
+            self.elements["vc.release"], release_size
+        )
+        self.elements["vc.release.hover"] = pygame.transform.scale(
+            self.elements["vc.release.hover"], release_size
+        )
+        self.elements["vc.release.pressed"] = pygame.transform.scale(
+            self.elements["vc.release.pressed"], release_size
+        )
+        self.elements["vc.release.invalid"] = pygame.transform.scale(
+            self.elements["vc.release.invalid"], release_size
+        )
+
+        self.elements["vc.release.loc"] = self.elements["vc.release"].get_rect(
+            bottomright=(
+                resolution[0] - infobar_button_height,
+                resolution[1] - infobar_button_height
+            )
+        )
+
+        self.elements["vc.buttons.release"] = self.elements["vc.release.loc"]
+
+        powerplant_size = (int(infobar_button_height * 6.283), infobar_button_height)
+
+        self.elements["vc.powerplant"] = pygame.transform.scale(
+            self.elements["vc.powerplant"], powerplant_size
+        )
+        self.elements["vc.powerplant.hover"] = pygame.transform.scale(
+            self.elements["vc.powerplant.hover"], powerplant_size
+        )
+        self.elements["vc.powerplant.pressed"] = pygame.transform.scale(
+            self.elements["vc.powerplant.pressed"], powerplant_size
+        )
+        self.elements["vc.powerplant.selected"] = pygame.transform.scale(
+            self.elements["vc.powerplant.selected"], powerplant_size
+        )
+
+        self.elements["vc.powerplant.loc"] = self.elements["vc.powerplant"].get_rect(
+            bottomright=(
+                resolution[0] - infobar_button_height * 4 - self.elements["vc.release"].get_width(),
+                resolution[1] - infobar_button_height
+            )
+        )
+
+        self.elements["vc.buttons.powerplant"] = self.elements["vc.powerplant.loc"]
+
+        chemical_size = (int(infobar_button_height * 7.733), infobar_button_height)
+
+        self.elements["vc.chemical"] = pygame.transform.scale(
+            self.elements["vc.chemical"], chemical_size
+        )
+        self.elements["vc.chemical.hover"] = pygame.transform.scale(
+            self.elements["vc.chemical.hover"], chemical_size
+        )
+        self.elements["vc.chemical.pressed"] = pygame.transform.scale(
+            self.elements["vc.chemical.pressed"], chemical_size
+        )
+        self.elements["vc.chemical.selected"] = pygame.transform.scale(
+            self.elements["vc.chemical.selected"], chemical_size
+        )
+
+        self.elements["vc.chemical.loc"] = self.elements["vc.chemical"].get_rect(
+            bottomright=(
+                resolution[0] - infobar_button_height * 5 - self.elements["vc.release"].get_width()
+                - self.elements["vc.powerplant"].get_width(),
+                resolution[1] - infobar_button_height
+            )
+        )
+
+        self.elements["vc.buttons.chemical"] = self.elements["vc.chemical.loc"]
+
+        manufactory_size = (int(infobar_button_height * 8.216), infobar_button_height)
+
+        self.elements["vc.manufactory"] = pygame.transform.scale(
+            self.elements["vc.manufactory"], manufactory_size
+        )
+        self.elements["vc.manufactory.hover"] = pygame.transform.scale(
+            self.elements["vc.manufactory.hover"], manufactory_size
+        )
+        self.elements["vc.manufactory.pressed"] = pygame.transform.scale(
+            self.elements["vc.manufactory.pressed"], manufactory_size
+        )
+        self.elements["vc.manufactory.selected"] = pygame.transform.scale(
+            self.elements["vc.manufactory.selected"], manufactory_size
+        )
+
+        self.elements["vc.manufactory.loc"] = self.elements["vc.manufactory"].get_rect(
+            bottomright=(
+                resolution[0] - infobar_button_height * 6 - self.elements["vc.release"].get_width()
+                - self.elements["vc.powerplant"].get_width()
+                - self.elements["vc.chemical"].get_width(),
+                resolution[1] - infobar_button_height
+            )
+        )
+
+        self.elements["vc.buttons.manufactory"] = self.elements["vc.manufactory.loc"]

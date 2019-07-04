@@ -37,7 +37,7 @@ class MainMenu(Menu):
 
         # title
         title = self.renderer.fonts["main"].render(
-            text="Anthropodemics",
+            text="Anthropodemic",
             size=1000
         )
         title_size = title[1][2:]
