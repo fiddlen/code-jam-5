@@ -57,19 +57,21 @@ class PopulationChange:
                   " " * (20 - len(str(self.regions[region]["fin_pop"]))) +
                   "|" + str(self.regions[region]["percentage_change"])
                   )
+        return ""
 
-    def set_final_population(self, region, fin_pop):
-        int_pop = self.regions[region]["int_pop"]
-        self.regions[region]["fin_pop"] = fin_pop
+    def set_final_population(self, fin_pop, region):
+        int_pop = self.regions[region.name]["int_pop"]
+        self.regions[region.name]["fin_pop"] = fin_pop
 
         if int_pop == 0:
-            self.regions[region]["percentage_change"] = 0
+            self.regions[region.name]["percentage_change"] = 0
         else:
-            self.regions[region]["percentage_change"] = 100 * ((int_pop - fin_pop) / int_pop)
+            self.regions[region.name]["percentage_change"] = 100 * ((int_pop - fin_pop) / int_pop)
 
 
 def simulate_world_changes(world, virus):
     """Simulates one turn of world changes, returning a modified world object"""
+    print(f'Let us see how the world has been affected. CO2 levels were at {world.co2_concentration} ppm')
     industry_impacts = INDUSTRY_TO_CO2  # co2 impacts as given by industry id
     # calculate sea level rises
     initial_sea_level = world.sea_level
@@ -81,7 +83,6 @@ def simulate_world_changes(world, virus):
     for region in regions:
         # assume population is evenly distributed between 1m and average elevation
         region.population -= math.ceil(((world.co2_concentration-300) * region.initial_population) / 7000000000)
-        population_change += math.ceil(((world.co2_concentration-300) * region.initial_population) / 7000000000)
         population_change.set_final_population(region.population, region)
         if region.population <= 0:
             region.population = 0
@@ -92,6 +93,12 @@ def simulate_world_changes(world, virus):
 
     for region in virus.affected_regions:
         world.co2_concentration += virus.impact * industry_impacts[virus.industry] * 0.001
+
+    print(f'CO2 levels are now at {world.co2_concentration} ppm')
+    print()
+    print("Population changes are as follows:")
+    print()
+    print(population_change)
 
     return [world, population_change]
 
@@ -117,13 +124,12 @@ def simulate_virus_changes(world, virus):
     print(f'Let us see which regions can kick the virus out. Virus detectability is {virus.detectability} out of 100.')
     affected_regions_at_beginning_of_defence = virus.affected_regions.copy()
     for region in affected_regions_at_beginning_of_defence:
-        print(f'Let us see if {region.name} can kick the virus out.')
         if virus.detectability * 0.1 > random.randint(0, len(virus.affected_regions) + 10):
             virus.affected_regions.remove(region)
             print(region.name + " successfully got rid of the virus!")
         else:
             print(region.name + " could not get rid of the virus!")
-        print()
+    print()
     return virus
 
 
